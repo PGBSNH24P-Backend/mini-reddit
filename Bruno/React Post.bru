@@ -1,0 +1,26 @@
+meta {
+  name: React Post
+  type: http
+  seq: 4
+}
+
+put {
+  url: http://localhost:5016/post/react/:postId?reactionType=Funny
+  body: none
+  auth: inherit
+}
+
+params:query {
+  reactionType: Funny
+}
+
+params:path {
+  postId: 3b69d51c-42e4-4819-9fff-912f91795636
+}
+
+body:json {
+  {
+    "title": "C++",
+    "content": "C# too!"
+  }
+}

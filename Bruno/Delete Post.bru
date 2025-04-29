@@ -1,0 +1,22 @@
+meta {
+  name: Delete Post
+  type: http
+  seq: 3
+}
+
+delete {
+  url: http://localhost:5016/post/delete/:postId
+  body: none
+  auth: inherit
+}
+
+params:path {
+  postId: 11022848-4466-4311-a79a-71fde6964cfd
+}
+
+body:json {
+  {
+    "title": "C++",
+    "content": "C# too!"
+  }
+}
