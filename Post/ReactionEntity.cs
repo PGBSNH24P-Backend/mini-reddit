@@ -24,5 +24,5 @@ public enum ReactionType
     Like,
     Dislike,
     Heart,
-    Funny
+    Funny,
 }

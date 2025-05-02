@@ -8,13 +8,17 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(
-            "Host=localhost;Port=5432;Database=minireddit;Username=postgres;Password=password"
-        ));
+        builder.Services.AddDbContext<AppDbContext>(options =>
+            options.UseNpgsql(
+                "Host=localhost;Port=5432;Database=minireddit;Username=postgres;Password=password"
+            )
+        );
 
         builder.Services.AddControllers();
         builder.Services.AddScoped<IPostService, DefaultPostService>();
         builder.Services.AddScoped<IPostRepository, EfPostRepository>();
+        builder.Services.AddScoped<ICommentService, DefaultCommentService>();
+        builder.Services.AddScoped<ICommentRepository, EfCommentRepository>();
 
         var app = builder.Build();
 
@@ -23,18 +27,3 @@ public class Program
         app.Run();
     }
 }
-
-/*
-
-PostController
-CommentController
-
-PostService
-CommentService
-
-PostRepository
-CommentRepository
-
-DbContext
-
-*/

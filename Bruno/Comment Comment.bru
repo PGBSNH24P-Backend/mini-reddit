@@ -1,0 +1,21 @@
+meta {
+  name: Comment Comment
+  type: http
+  seq: 6
+}
+
+post {
+  url: http://localhost:5016/comment/create-for-comment/:commentId
+  body: json
+  auth: inherit
+}
+
+params:path {
+  commentId: 449c18c5-206c-4429-8804-1e48e9cbe0f1
+}
+
+body:json {
+  {
+    "content": "Nivå 3"
+  }
+}

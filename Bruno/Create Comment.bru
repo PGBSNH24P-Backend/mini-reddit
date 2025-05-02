@@ -1,0 +1,21 @@
+meta {
+  name: Create Comment
+  type: http
+  seq: 5
+}
+
+post {
+  url: http://localhost:5016/comment/create/:postId
+  body: json
+  auth: inherit
+}
+
+params:path {
+  postId: 076311b8-6760-4c13-bff9-39ee26554c21
+}
+
+body:json {
+  {
+    "content": "Hej! Nice post!"
+  }
+}

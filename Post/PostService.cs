@@ -4,11 +4,11 @@ public interface IPostService
     public Task<PageResult<PostEntity>> GetPageAsync(int page);
     public Task<PostEntity?> DeletePostAsync(Guid postId);
     public Task<PostEntity?> ReactPostAsync(Guid postId, ReactionType reactionType);
+    public Task<PostEntity?> GetPostByIdAsync(Guid postId);
 }
 
 public class DefaultPostService : IPostService
 {
-
     private readonly IPostRepository postRepository;
 
     public DefaultPostService(IPostRepository postRepository)
@@ -82,5 +82,10 @@ public class DefaultPostService : IPostService
         await postRepository.AddReactionAsync(reactionEntity);
 
         return postEntity;
+    }
+
+    public async Task<PostEntity?> GetPostByIdAsync(Guid postId)
+    {
+        return await postRepository.GetByIdAsync(postId);
     }
 }

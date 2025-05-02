@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Mvc;
 [Route("post")]
 public class PostController : ControllerBase
 {
-
     private readonly IPostService postService;
     private readonly ILogger<PostController> logger;
 
@@ -25,18 +24,40 @@ public class PostController : ControllerBase
         }
         catch (ArgumentException exception)
         {
-            return BadRequest(new ApiError
-            {
-                Message = exception.Message
-            });
+            return BadRequest(new ApiError { Message = exception.Message });
         }
         catch (Exception exception)
         {
-            logger.LogError("Unexpected error when creating post: {} - {}", exception.Message, exception.StackTrace);
-            return StatusCode(500, new ApiError
+            logger.LogError(
+                "Unexpected error when creating post: {} - {}",
+                exception.Message,
+                exception.StackTrace
+            );
+            return StatusCode(500, new ApiError { Message = "Unexpected error" });
+        }
+    }
+
+    [HttpGet("{postId}")]
+    public async Task<IActionResult> GetPostById(Guid postId)
+    {
+        try
+        {
+            var postEntity = await postService.GetPostByIdAsync(postId);
+            if (postEntity == null)
             {
-                Message = "Unexpected error"
-            });
+                return NotFound(new ApiError { Message = "Post not found" });
+            }
+
+            return Ok(PostResponse.FromEntity(postEntity));
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(
+                "Unexpected error when fetching post: {} - {}",
+                exception.Message,
+                exception.StackTrace
+            );
+            return StatusCode(500, new ApiError { Message = "Unexpected error" });
         }
     }
 
@@ -46,20 +67,23 @@ public class PostController : ControllerBase
         try
         {
             var result = await postService.GetPageAsync(page);
-            return Ok(new PageResult<PostResponse>
-            {
-                Page = result.Page.Select(post => PostResponse.FromEntity(post)),
-                HasNext = result.HasNext,
-                HasPrevious = result.HasPrevious,
-            });
+            return Ok(
+                new PageResult<PostResponse>
+                {
+                    Page = result.Page.Select(post => PostResponse.FromEntity(post)),
+                    HasNext = result.HasNext,
+                    HasPrevious = result.HasPrevious,
+                }
+            );
         }
         catch (Exception exception)
         {
-            logger.LogError("Unexpected error when fetching post page: {} - {}", exception.Message, exception.StackTrace);
-            return StatusCode(500, new ApiError
-            {
-                Message = "Unexpected error"
-            });
+            logger.LogError(
+                "Unexpected error when fetching post page: {} - {}",
+                exception.Message,
+                exception.StackTrace
+            );
+            return StatusCode(500, new ApiError { Message = "Unexpected error" });
         }
     }
 
@@ -71,10 +95,7 @@ public class PostController : ControllerBase
             var postEntity = await postService.DeletePostAsync(postId);
             if (postEntity == null)
             {
-                return NotFound(new ApiError
-                {
-                    Message = "Post with id not found",
-                });
+                return NotFound(new ApiError { Message = "Post with id not found" });
             }
 
             logger.LogInformation("Deleted post with id '{}'", postEntity.Id);
@@ -82,11 +103,12 @@ public class PostController : ControllerBase
         }
         catch (Exception exception)
         {
-            logger.LogError("Unexpected error when deleting post: {} - {}", exception.Message, exception.StackTrace);
-            return StatusCode(500, new ApiError
-            {
-                Message = "Unexpected error"
-            });
+            logger.LogError(
+                "Unexpected error when deleting post: {} - {}",
+                exception.Message,
+                exception.StackTrace
+            );
+            return StatusCode(500, new ApiError { Message = "Unexpected error" });
         }
     }
 
@@ -98,21 +120,19 @@ public class PostController : ControllerBase
             var postEntity = await postService.ReactPostAsync(postId, reactionType);
             if (postEntity == null)
             {
-                return NotFound(new ApiError
-                {
-                    Message = "Post not not found"
-                });
+                return NotFound(new ApiError { Message = "Post not not found" });
             }
 
             return NoContent();
         }
         catch (Exception exception)
         {
-            logger.LogError("Unexpected error when reacting to post: {} - {}", exception.Message, exception.StackTrace);
-            return StatusCode(500, new ApiError
-            {
-                Message = "Unexpected error"
-            });
+            logger.LogError(
+                "Unexpected error when reacting to post: {} - {}",
+                exception.Message,
+                exception.StackTrace
+            );
+            return StatusCode(500, new ApiError { Message = "Unexpected error" });
         }
     }
 }
@@ -151,8 +171,9 @@ public class PostResponse
             Id = entity.Id,
             Title = entity.Title,
             Content = entity.Content,
-            CreationDate = entity.CreationDate,
-            Comments = entity.Comments
+            CreationDate = entity.CreationDate.ToLocalTime(),
+            Comments = entity
+                .Comments.Where(comment => comment.ParentComment == null)
                 .Select(comment => CommentResponse.FromEntity(comment))
                 .ToList(),
             Reactions = reactions,
@@ -168,10 +189,6 @@ public class ReactionResponse
 
     public static ReactionResponse FromEntity(ReactionEntity entity)
     {
-        return new ReactionResponse
-        {
-            Id = entity.Id,
-            Type = entity.Type,
-        };
+        return new ReactionResponse { Id = entity.Id, Type = entity.Type };
     }
 }

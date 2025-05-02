@@ -1,0 +1,22 @@
+meta {
+  name: Delete Comment
+  type: http
+  seq: 7
+}
+
+delete {
+  url: http://localhost:5016/comment/delete/:commentId
+  body: none
+  auth: inherit
+}
+
+params:path {
+  commentId: 7fc822b5-5d24-47be-ae68-fba8f60bf66b
+}
+
+body:json {
+  {
+    "title": "C++",
+    "content": "C# too!"
+  }
+}

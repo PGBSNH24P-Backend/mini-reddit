@@ -27,12 +27,14 @@ public class EfPostRepository : IPostRepository
 
     public async Task<IEnumerable<PostEntity>> GetPageAsync(int page, int pageSize)
     {
-        var posts = await context.Posts
-            .Include(model => model.Reactions)
+        var posts = await context
+            .Posts.Include(model => model.Reactions)
             .Include(model => model.Comments)
+            .ThenInclude(comment => comment.SubComments)
             .Skip(page * pageSize)
             .Take(pageSize)
             .ToListAsync();
+
         return posts;
     }
 
@@ -43,9 +45,10 @@ public class EfPostRepository : IPostRepository
 
     public async Task<PostEntity?> GetByIdAsync(Guid postId)
     {
-        return await context.Posts
-            .Include(model => model.Reactions)
+        return await context
+            .Posts.Include(model => model.Reactions)
             .Include(model => model.Comments)
+            .ThenInclude(comment => comment.SubComments)
             .FirstOrDefaultAsync(post => post.Id.Equals(postId));
     }
 
