@@ -1,4 +1,7 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Npgsql.Replication;
 
 [ApiController]
 [Route("post")]
@@ -14,17 +17,28 @@ public class PostController : ControllerBase
     }
 
     [HttpPost("create")]
+    [Authorize("create_post")]
     public async Task<IActionResult> CreatePost([FromBody] CreatePostRequest request)
     {
         try
         {
-            var postEntity = await postService.CreatePostAsync(request);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null)
+            {
+                return Unauthorized();
+            }
+
+            var postEntity = await postService.CreatePostAsync(userId, request);
             logger.LogInformation("Created post with id '{}'", postEntity.Id);
             return CreatedAtAction(nameof(CreatePost), PostResponse.FromEntity(postEntity));
         }
         catch (ArgumentException exception)
         {
             return BadRequest(new ApiError { Message = exception.Message });
+        }
+        catch (KeyNotFoundException)
+        {
+            return Unauthorized();
         }
         catch (Exception exception)
         {
@@ -88,11 +102,18 @@ public class PostController : ControllerBase
     }
 
     [HttpDelete("delete/{postId}")]
+    [Authorize]
     public async Task<IActionResult> DeletePost(Guid postId)
     {
         try
         {
-            var postEntity = await postService.DeletePostAsync(postId);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null)
+            {
+                return Unauthorized();
+            }
+
+            var postEntity = await postService.DeletePostAsync(userId, postId);
             if (postEntity == null)
             {
                 return NotFound(new ApiError { Message = "Post with id not found" });
@@ -100,6 +121,10 @@ public class PostController : ControllerBase
 
             logger.LogInformation("Deleted post with id '{}'", postEntity.Id);
             return Ok(postEntity.Id);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return NotFound();
         }
         catch (Exception exception)
         {
@@ -117,13 +142,20 @@ public class PostController : ControllerBase
     {
         try
         {
-            var postEntity = await postService.ReactPostAsync(postId, reactionType);
-            if (postEntity == null)
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null)
             {
-                return NotFound(new ApiError { Message = "Post not not found" });
+                return Unauthorized();
             }
 
+            await postService.ReactPostAsync(userId, postId, reactionType);
+
             return NoContent();
+        }
+        catch (KeyNotFoundException exception)
+        {
+            return NotFound(new ApiError { Message = exception.Message });
+
         }
         catch (Exception exception)
         {
@@ -156,6 +188,7 @@ public class PostResponse
     public required ICollection<CommentResponse> Comments { get; set; }
 
     public required Dictionary<string, int> Reactions { get; set; }
+    public required string UserName { get; set; }
 
     public static PostResponse FromEntity(PostEntity entity)
     {
@@ -177,6 +210,7 @@ public class PostResponse
                 .Select(comment => CommentResponse.FromEntity(comment))
                 .ToList(),
             Reactions = reactions,
+            UserName = entity.CreatedBy?.UserName ?? "",
         };
     }
 }

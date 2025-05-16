@@ -9,13 +9,15 @@ public class PostEntity
     public ICollection<CommentEntity> Comments { get; set; }
 
     public ICollection<ReactionEntity> Reactions { get; set; }
+    public UserEntity CreatedBy { get; set; }
 
-    public PostEntity(string title, string content)
+    public PostEntity(string title, string content, UserEntity user)
     {
         this.Id = Guid.NewGuid();
         this.Title = title;
         this.Content = content;
         this.CreationDate = DateTime.UtcNow;
+        this.CreatedBy = user;
         this.Comments = [];
         this.Reactions = [];
     }
@@ -24,6 +26,7 @@ public class PostEntity
     {
         this.Title = string.Empty;
         this.Content = string.Empty;
+        this.CreatedBy = null!;
         this.Comments = [];
         this.Reactions = [];
     }

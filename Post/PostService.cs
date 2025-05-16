@@ -1,22 +1,24 @@
 public interface IPostService
 {
-    public Task<PostEntity> CreatePostAsync(CreatePostRequest request);
+    public Task<PostEntity> CreatePostAsync(string userId, CreatePostRequest request);
     public Task<PageResult<PostEntity>> GetPageAsync(int page);
-    public Task<PostEntity?> DeletePostAsync(Guid postId);
-    public Task<PostEntity?> ReactPostAsync(Guid postId, ReactionType reactionType);
+    public Task<PostEntity?> DeletePostAsync(string userId, Guid postId);
+    public Task ReactPostAsync(string userId, Guid postId, ReactionType reactionType);
     public Task<PostEntity?> GetPostByIdAsync(Guid postId);
 }
 
 public class DefaultPostService : IPostService
 {
     private readonly IPostRepository postRepository;
+    private readonly IUserService userService;
 
-    public DefaultPostService(IPostRepository postRepository)
+    public DefaultPostService(IPostRepository postRepository, IUserService userService)
     {
         this.postRepository = postRepository;
+        this.userService = userService;
     }
 
-    public async Task<PostEntity> CreatePostAsync(CreatePostRequest request)
+    public async Task<PostEntity> CreatePostAsync(string userId, CreatePostRequest request)
     {
         if (string.IsNullOrEmpty(request.Title))
         {
@@ -33,7 +35,13 @@ public class DefaultPostService : IPostService
             throw new ArgumentException("Content may not be null or empty");
         }
 
-        var postEntity = new PostEntity(request.Title, request.Content);
+        var user = await userService.GetUserByIdAsync(userId);
+        if (user == null)
+        {
+            throw new KeyNotFoundException("User not found");
+        }
+
+        var postEntity = new PostEntity(request.Title, request.Content, user);
         await postRepository.AddAsync(postEntity);
 
         return postEntity;
@@ -56,32 +64,49 @@ public class DefaultPostService : IPostService
         };
     }
 
-    public async Task<PostEntity?> DeletePostAsync(Guid postId)
+    public async Task<PostEntity?> DeletePostAsync(string userId, Guid postId)
     {
         var postEntity = await postRepository.GetByIdAsync(postId);
         if (postEntity == null)
         {
             return null;
+        }
+
+        if (!postEntity.CreatedBy.Id.Equals(userId))
+        {
+            throw new UnauthorizedAccessException();
         }
 
         await postRepository.DeleteAsync(postEntity);
         return postEntity;
     }
 
-    public async Task<PostEntity?> ReactPostAsync(Guid postId, ReactionType reactionType)
+    public async Task ReactPostAsync(string userId, Guid postId, ReactionType reactionType)
     {
-        var postEntity = await postRepository.GetByIdAsync(postId);
-        if (postEntity == null)
+        var existingReaction = await postRepository.GetReactionByPostAndUser(userId, postId);
+        if (existingReaction != null)
         {
-            return null;
+            existingReaction.Type = reactionType;
+            await postRepository.SaveReaction(existingReaction);
+            return;
         }
 
-        var reactionEntity = new ReactionEntity(reactionType, postEntity);
-        postEntity.Reactions.Add(reactionEntity);
+        var user = await userService.GetUserByIdAsync(userId);
+        if (user == null)
+        {
+            throw new KeyNotFoundException("User not found");
+        }
+
+        var post = await postRepository.GetByIdAsync(postId);
+        if (post == null)
+        {
+            throw new KeyNotFoundException("Post not found");
+        }
+
+        var reactionEntity = new ReactionEntity(reactionType, post, user);
+        post.Reactions.Add(reactionEntity);
 
         await postRepository.AddReactionAsync(reactionEntity);
-
-        return postEntity;
     }
 
     public async Task<PostEntity?> GetPostByIdAsync(Guid postId)

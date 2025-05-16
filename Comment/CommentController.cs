@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 [ApiController]
@@ -14,6 +16,7 @@ public class CommentController : ControllerBase
     }
 
     [HttpPost("create/{postId}")]
+    [Authorize]
     public async Task<IActionResult> CreateComment(
         Guid postId,
         [FromBody] CreateCommentRequest request
@@ -21,7 +24,13 @@ public class CommentController : ControllerBase
     {
         try
         {
-            var commentEntity = await commentService.CreateCommentAsync(postId, request);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null)
+            {
+                return Unauthorized();
+            }
+
+            var commentEntity = await commentService.CreateCommentAsync(userId, postId, request);
             logger.LogInformation("Created comment with id '{}'", commentEntity.Id);
 
             return CreatedAtAction(
@@ -37,6 +46,10 @@ public class CommentController : ControllerBase
         {
             return NotFound(exception.Message);
         }
+        catch (UnauthorizedAccessException)
+        {
+            return Unauthorized();
+        }
         catch (Exception exception)
         {
             logger.LogError(
@@ -49,6 +62,7 @@ public class CommentController : ControllerBase
     }
 
     [HttpPost("create-for-comment/{commentId}")]
+    [Authorize]
     public async Task<IActionResult> CreateCommentForComment(
         Guid commentId,
         [FromBody] CreateCommentRequest request
@@ -56,7 +70,14 @@ public class CommentController : ControllerBase
     {
         try
         {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null)
+            {
+                return Unauthorized();
+            }
+
             var commentEntity = await commentService.CreateCommentForCommentAsync(
+                userId,
                 commentId,
                 request
             );
@@ -75,6 +96,10 @@ public class CommentController : ControllerBase
         {
             return NotFound(exception.Message);
         }
+        catch (UnauthorizedAccessException)
+        {
+            return Unauthorized();
+        }
         catch (Exception exception)
         {
             logger.LogError(
@@ -87,17 +112,28 @@ public class CommentController : ControllerBase
     }
 
     [HttpDelete("delete/{commentId}")]
+    [Authorize]
     public async Task<IActionResult> DeleteComment(Guid commentId)
     {
         try
         {
-            var commentEntity = await commentService.DeleteCommentAsync(commentId);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null)
+            {
+                return Unauthorized();
+            }
+
+            var commentEntity = await commentService.DeleteCommentAsync(userId, commentId);
             if (commentEntity == null)
             {
                 return NotFound(new ApiError { Message = "Comment not found" });
             }
 
             return NoContent();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return NotFound();
         }
         catch (Exception exception)
         {
@@ -122,6 +158,7 @@ public class CommentResponse
 
     public required string Content { get; set; }
     public required IEnumerable<CommentResponse> SubComments { get; set; }
+    public required string UserName { get; set; }
 
     public static CommentResponse FromEntity(CommentEntity entity)
     {
@@ -130,6 +167,7 @@ public class CommentResponse
             Id = entity.Id,
             Content = entity.Content,
             SubComments = entity.SubComments.Select(comment => CommentResponse.FromEntity(comment)),
+            UserName = entity.CreatedBy?.UserName ?? "",
         };
     }
 }

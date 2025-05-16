@@ -31,7 +31,9 @@ public class EfCommentRepository : ICommentRepository
     public async Task<CommentEntity?> GetByIdAsync(Guid commentId)
     {
         return await context
-            .Comments.Include(model => model.Post)
+            .Comments
+            .Include(model => model.CreatedBy)
+            .Include(model => model.Post)
             .Include(model => model.SubComments)
             .FirstOrDefaultAsync(comment => comment.Id.Equals(commentId));
     }
